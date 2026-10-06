@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Settings } from './settings';
+import { CreateRoom } from './create';
 
 const globImages = import.meta.glob<string>(
   '/public/pics/**/*.{png,jpg,jpeg,webp,PNG,JPG,JPEG,WEBP}',
@@ -37,6 +38,8 @@ const shuffleList = (arr: string[]) => {
 
 export const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+  const [showAiNotice, setShowAiNotice] = useState(false);
   const [showIosSheet, setShowIosSheet] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [gameMode, setGameMode] = useState<'ai' | 'online'>('ai');
@@ -67,6 +70,18 @@ export const App: React.FC = () => {
     }
 
     setIsSettingsOpen(false);
+  };
+
+  const handleMainAction = () => {
+    if (gameMode === 'ai') {
+      setShowAiNotice(true);
+    } else {
+      setIsCreateRoomOpen(true);
+    }
+  };
+
+  const handleRoomCreated = () => {
+    setIsCreateRoomOpen(false);
   };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
@@ -233,7 +248,11 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            <button type="button" className="btn-pill primary">
+            <button
+              type="button"
+              className="btn-pill primary"
+              onClick={handleMainAction}
+            >
               <span
                 key={gameMode}
                 className={`btn-label-text ${
@@ -271,6 +290,36 @@ export const App: React.FC = () => {
         onSave={handleSaveSettings}
         onClose={() => setIsSettingsOpen(false)}
       />
+
+      <CreateRoom
+        isOpen={isCreateRoomOpen}
+        nickname={nickname}
+        onClose={() => setIsCreateRoomOpen(false)}
+        onCreate={handleRoomCreated}
+      />
+
+      {showAiNotice && (
+        <div className="dialog-backdrop" onClick={() => setShowAiNotice(false)}>
+          <div className="dialog-card" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-icon-circle">
+              <span className="material-symbols-rounded">lightbulb</span>
+            </div>
+            <div>
+              <h2 className="dialog-title">Режим в разработке</h2>
+              <p className="dialog-desc">
+                Одиночная игра против искусственного интеллекта появится в будущих обновлениях. Сейчас доступен онлайн-режим с живыми соперниками.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-pill primary"
+              onClick={() => setShowAiNotice(false)}
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
 
       {showIosSheet && (
         <div className="sheet-backdrop" onClick={() => setShowIosSheet(false)}>
