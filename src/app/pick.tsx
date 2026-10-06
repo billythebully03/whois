@@ -180,6 +180,31 @@ export const PickScreen: React.FC<PickScreenProps> = ({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
+        <button
+          type="button"
+          onClick={onExit}
+          style={{
+            position: 'absolute',
+            top: 'max(env(safe-area-inset-top), 18px)',
+            right: '20px',
+            zIndex: 35,
+            width: '42px',
+            height: '42px',
+            borderRadius: '50%',
+            background: 'rgba(28, 28, 28, 0.75)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: 0,
+            color: '#ffffff',
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer'
+          }}
+          aria-label="Выход"
+        >
+          <span className="material-symbols-rounded">close</span>
+        </button>
+
         <div
           className="pick-fade-backdrop"
           style={{ opacity: dimOpacity }}
