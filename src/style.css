@@ -1,17 +1,14 @@
 :root {
   --bg: #000000;
-  --surface: #1f1f1f;
-  --surface2: #2a2a2a;
-  --surface3: #333333;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --surface3: #303030;
   --text: #f1f3f4;
   --muted: #9aa0a6;
   --faint: #686868;
   --blue: #8ab4f8;
   --blue-bg: #d3e3fd;
   --blue-dark: #202124;
-  --green: #81c995;
-  --red: #f28b82;
-  --yellow: #fdd663;
   --line: #292929;
 }
 
@@ -34,7 +31,207 @@ html, body {
   overflow: hidden;
   position: fixed;
   inset: 0;
-  touch-action: none;
+  touch-action: manipulation;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: 0px;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  background: var(--bg);
+}
+
+.home-view {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 20px 24px;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.hero-box {
+  width: 100%;
+  height: 52vh;
+  min-height: 330px;
+  max-height: 440px;
+  background: var(--surface);
+  border-radius: 32px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.marquee-columns {
+  position: absolute;
+  inset: -20px -10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.marquee-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.marquee-col.c1 {
+  filter: blur(2.5px);
+  opacity: 0.35;
+}
+
+.marquee-col.c2 {
+  filter: blur(1.2px);
+  opacity: 0.65;
+}
+
+.marquee-col.c3 {
+  filter: blur(0px);
+  opacity: 0.95;
+}
+
+.marquee-col.c4 {
+  filter: blur(1.2px);
+  opacity: 0.65;
+}
+
+.marquee-col.c5 {
+  filter: blur(2.5px);
+  opacity: 0.35;
+}
+
+.track-up {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: scrollUp 28s linear infinite;
+}
+
+.track-down {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: scrollDown 28s linear infinite;
+}
+
+.marquee-card {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  background: var(--surface2);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.marquee-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 0.88) 100%);
+  pointer-events: none;
+}
+
+.hero-overlay {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.hero-title {
+  font-size: clamp(28px, 7.5vw, 36px);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+.home-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 6px;
+}
+
+.btn-pill {
+  width: 100%;
+  min-height: 58px;
+  border-radius: 29px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.18s ease;
+  border: 0;
+}
+
+.btn-pill:active {
+  transform: scale(0.96);
+}
+
+.btn-pill.primary {
+  background: var(--blue-bg);
+  color: var(--blue-dark);
+}
+
+.btn-pill.secondary {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+@keyframes scrollUp {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes scrollDown {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}  touch-action: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
