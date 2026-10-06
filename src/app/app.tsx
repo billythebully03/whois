@@ -52,13 +52,21 @@ export const App: React.FC = () => {
     return localStorage.getItem('wtc_avatar') || null;
   });
 
+  const [questionCheck, setQuestionCheck] = useState<boolean>(() => {
+    return localStorage.getItem('wtc_question_check') !== 'false';
+  });
+
   useEffect(() => {
     const isIos = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     const isMediaStandalone = window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(Boolean(isIos || isMediaStandalone));
   }, []);
 
-  const handleSaveSettings = (newNick: string, newAvatar: string | null) => {
+  const handleSaveSettings = (
+    newNick: string,
+    newAvatar: string | null,
+    newCheck: boolean
+  ) => {
     setNickname(newNick);
     localStorage.setItem('wtc_nickname', newNick);
 
@@ -68,6 +76,9 @@ export const App: React.FC = () => {
     } else {
       localStorage.removeItem('wtc_avatar');
     }
+
+    setQuestionCheck(newCheck);
+    localStorage.setItem('wtc_question_check', String(newCheck));
 
     setIsSettingsOpen(false);
   };
@@ -287,6 +298,7 @@ export const App: React.FC = () => {
         isOpen={isSettingsOpen}
         nickname={nickname}
         avatar={avatar}
+        questionCheck={questionCheck}
         onSave={handleSaveSettings}
         onClose={() => setIsSettingsOpen(false)}
       />
