@@ -14,23 +14,23 @@ const globImages = import.meta.glob<string>(
   { eager: true, query: '?url', import: 'default' }
 );
 
-const formatCleanTitle = (path: string): string => {
-  const cleanPath = path.split('?')[0].split('#')[0];
+const formatCleanTitle = (filePath: string): string => {
+  const cleanPath = filePath.split('?')[0].split('#')[0];
   const fileWithExt = cleanPath.split('/').pop() || '';
-  let baseName = fileWithExt.replace(/\.[^/.]+$/, '');
-  baseName = baseName.replace(/[-_][a-zA-Z0-9]{4,10}$/, '');
-  const words = baseName.replace(/[_-]+/g, ' ').trim().split(/\s+/);
+  const lastDotIndex = fileWithExt.lastIndexOf('.');
+  const nameOnly = lastDotIndex !== -1 ? fileWithExt.substring(0, lastDotIndex) : fileWithExt;
+  const words = nameOnly.replace(/[_-]+/g, ' ').trim().split(/\s+/);
   return words
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 };
 
-const allAvailableImages = Object.entries(globImages).map(([p, url]) => {
-  const cleanUrl = typeof url === 'string' && url.length > 0 ? url.replace(/^\/public/, '') : p.replace(/^\/public/, '');
+const allAvailableImages = Object.entries(globImages).map(([rawPath, assetUrl]) => {
+  const url = typeof assetUrl === 'string' && assetUrl.length > 0 ? assetUrl.replace(/^\/public/, '') : rawPath.replace(/^\/public/, '');
   return {
-    url: cleanUrl,
-    name: formatCleanTitle(cleanUrl)
+    url,
+    name: formatCleanTitle(rawPath)
   };
 });
 
@@ -44,8 +44,8 @@ export const PickScreen: React.FC<PickScreenProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [readyCount, setReadyCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(2);
-  const [dimOpacity, setDimOpacity] = useState(1);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [randomCenterIndex, setRandomCenterIndex] = useState(0);
 
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
@@ -62,10 +62,18 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     return filtered.length > 0 ? filtered : allAvailableImages;
   }, [room]);
 
-  const centerImage = useMemo(() => {
-    if (relevantImages.length === 0) return null;
-    return relevantImages[Math.floor(Math.random() * relevantImages.length)];
-  }, [relevantImages]);
+  useEffect(() => {
+    if (isOpen) {
+      setPan({ x: 0, y: 0 });
+      setIsReady(false);
+      setShowExitConfirm(false);
+      if (relevantImages.length > 0) {
+        setRandomCenterIndex(Math.floor(Math.random() * relevantImages.length));
+      }
+      const initialCount = Array.isArray(room?.players) && room?.players.length > 0 ? room.players.length : 2;
+      setTotalParticipants(initialCount);
+    }
+  }, [isOpen]);
 
   const CELL_SPACING = 108;
 
@@ -83,9 +91,9 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     const tiles = [];
     for (let c = minCol; c <= maxCol; c++) {
       for (let r = minRow; r <= maxRow; r++) {
-        let img = centerImage || relevantImages[0];
+        let img = relevantImages[randomCenterIndex % relevantImages.length];
         if (c !== 0 || r !== 0) {
-          const hash = Math.abs(c * 73856093 ^ r * 19349663) % relevantImages.length;
+          const hash = Math.abs((c + 1000) * 73856093 ^ (r + 1000) * 19349663) % relevantImages.length;
           img = relevantImages[hash];
         }
 
@@ -98,7 +106,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
       }
     }
     return tiles;
-  }, [pan, relevantImages, centerImage]);
+  }, [pan, relevantImages, randomCenterIndex]);
 
   const closestTile = useMemo(() => {
     if (visibleTiles.length === 0) return null;
@@ -116,23 +124,6 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     });
     return closest;
   }, [visibleTiles, pan]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setDimOpacity(1);
-      setPan({ x: 0, y: 0 });
-      setIsReady(false);
-      setShowExitConfirm(false);
-
-      const playersCount = Array.isArray(room?.players) && room?.players.length > 0 ? room.players.length : 2;
-      setTotalParticipants(playersCount);
-
-      const timer = setTimeout(() => {
-        setDimOpacity(0);
-      }, 900);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, room]);
 
   useEffect(() => {
     if (!isOpen || !room?.id || !supabase) return;
@@ -253,11 +244,6 @@ export const PickScreen: React.FC<PickScreenProps> = ({
         >
           <span className="material-symbols-rounded">close</span>
         </button>
-
-        <div
-          className="pick-fade-backdrop"
-          style={{ opacity: dimOpacity }}
-        />
 
         <div
           className="pick-canvas"
