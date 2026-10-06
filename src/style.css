@@ -49,16 +49,90 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 16px 20px 24px;
+  padding: 12px 20px 24px;
   max-width: 440px;
   margin: 0 auto;
 }
 
+.home-top {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-card {
+  width: 100%;
+  height: 60px;
+  background: var(--surface2);
+  border-radius: 30px;
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface3);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.avatar-placeholder .material-symbols-rounded {
+  font-size: 22px;
+}
+
+.profile-nick {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-settings {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface3);
+  border: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-settings:active {
+  transform: scale(0.92);
+  background: #383838;
+}
+
+.btn-settings .material-symbols-rounded {
+  font-size: 22px;
+}
+
 .hero-box {
   width: 100%;
-  height: 52vh;
-  min-height: 330px;
-  max-height: 440px;
+  height: 48vh;
+  min-height: 310px;
+  max-height: 410px;
   background: var(--surface);
   border-radius: 32px;
   position: relative;
