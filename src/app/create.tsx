@@ -120,6 +120,7 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
         title: finalTitle,
         host_nickname: nickname,
         host_avatar: avatar,
+        players: [{ nickname, avatar, isHost: true }],
         theme_type: themeTab,
         selected_universes: chosen,
         game_rule: gameRule,
