@@ -33,8 +33,9 @@ export const RoomsList: React.FC<RoomsListProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchRooms = async () => {
-    if (!supabase) return;
-    const { data } = await supabase
+    const client = supabase;
+    if (!client) return;
+    const { data } = await client
       .from('rooms')
       .select('*')
       .eq('status', 'waiting')
@@ -52,9 +53,10 @@ export const RoomsList: React.FC<RoomsListProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) return;
 
-    const channel = supabase
+    const channel = client
       .channel('rooms_realtime')
       .on(
         'postgres_changes',
@@ -66,7 +68,7 @@ export const RoomsList: React.FC<RoomsListProps> = ({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   }, []);
 
