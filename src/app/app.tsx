@@ -37,6 +37,9 @@ const shuffleList = (arr: string[]) => {
 export const App: React.FC = () => {
   const [showIosSheet, setShowIosSheet] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [nickname] = useState<string>(() => {
+    return localStorage.getItem('wtc_nickname') || 'Игрок';
+  });
 
   useEffect(() => {
     const isIos = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
@@ -70,96 +73,110 @@ export const App: React.FC = () => {
 
   return (
     <main className="home-view">
-      <section className="hero-box">
-        <div className="marquee-columns">
-          <div className="marquee-col c1">
-            <div className="track-up">
-              {col1.map((src, i) => (
-                <div key={i} className="marquee-card">
-                  <img
-                    src={src}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.style.opacity = '0.35';
-                    }}
-                  />
-                </div>
-              ))}
+      <div className="home-top">
+        <header className="profile-card">
+          <div className="profile-info">
+            <div className="avatar-placeholder">
+              <span className="material-symbols-rounded">person</span>
+            </div>
+            <span className="profile-nick">{nickname}</span>
+          </div>
+          <button type="button" className="btn-settings" aria-label="Настройки">
+            <span className="material-symbols-rounded">settings</span>
+          </button>
+        </header>
+
+        <section className="hero-box">
+          <div className="marquee-columns">
+            <div className="marquee-col c1">
+              <div className="track-up">
+                {col1.map((src, i) => (
+                  <div key={i} className="marquee-card">
+                    <img
+                      src={src}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.opacity = '0.35';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="marquee-col c2">
+              <div className="track-down">
+                {col2.map((src, i) => (
+                  <div key={i} className="marquee-card">
+                    <img
+                      src={src}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.opacity = '0.35';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="marquee-col c3">
+              <div className="track-up">
+                {col3.map((src, i) => (
+                  <div key={i} className="marquee-card">
+                    <img
+                      src={src}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.opacity = '0.35';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="marquee-col c4">
+              <div className="track-down">
+                {col4.map((src, i) => (
+                  <div key={i} className="marquee-card">
+                    <img
+                      src={src}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.opacity = '0.35';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="marquee-col c5">
+              <div className="track-up">
+                {col5.map((src, i) => (
+                  <div key={i} className="marquee-card">
+                    <img
+                      src={src}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.opacity = '0.35';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="marquee-col c2">
-            <div className="track-down">
-              {col2.map((src, i) => (
-                <div key={i} className="marquee-card">
-                  <img
-                    src={src}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.style.opacity = '0.35';
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+          <div className="hero-scrim" />
+
+          <div className="hero-overlay">
+            <h1 className="hero-heading">Who Is?</h1>
+            <h1 className="hero-heading">Guess A Character</h1>
           </div>
-
-          <div className="marquee-col c3">
-            <div className="track-up">
-              {col3.map((src, i) => (
-                <div key={i} className="marquee-card">
-                  <img
-                    src={src}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.style.opacity = '0.35';
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="marquee-col c4">
-            <div className="track-down">
-              {col4.map((src, i) => (
-                <div key={i} className="marquee-card">
-                  <img
-                    src={src}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.style.opacity = '0.35';
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="marquee-col c5">
-            <div className="track-up">
-              {col5.map((src, i) => (
-                <div key={i} className="marquee-card">
-                  <img
-                    src={src}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.style.opacity = '0.35';
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-scrim" />
-
-        <div className="hero-overlay">
-          <h1 className="hero-heading">Who Is?</h1>
-          <h1 className="hero-heading">Guess A Character</h1>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <section className="home-bottom">
         <button type="button" className="btn-pill primary">
