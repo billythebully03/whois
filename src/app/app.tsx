@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 const globImages = import.meta.glob<string>(
   '/public/pics/**/*.{png,jpg,jpeg,webp,PNG,JPG,JPEG,WEBP}',
@@ -36,6 +36,13 @@ const shuffleList = (arr: string[]) => {
 
 export const App: React.FC = () => {
   const [showIosSheet, setShowIosSheet] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const isIos = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    const isMediaStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    setIsStandalone(Boolean(isIos || isMediaStandalone));
+  }, []);
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
     const randomized = shuffleList(allPics);
@@ -161,20 +168,38 @@ export const App: React.FC = () => {
         <button type="button" className="btn-pill outline">
           Присоединиться
         </button>
-        <button
-          type="button"
-          className="pwa-chip"
-          onClick={() => setShowIosSheet(true)}
-        >
-          <span className="material-symbols-rounded">ios_share</span>
-          <span>На экран «Домой»</span>
-        </button>
+
+        {isStandalone ? (
+          <span className="pibs-signature">Made by PIBS</span>
+        ) : (
+          <button
+            type="button"
+            className="pwa-chip"
+            onClick={() => setShowIosSheet(true)}
+          >
+            <span className="material-symbols-rounded">ios_share</span>
+            <span>На экран «Домой»</span>
+          </button>
+        )}
       </section>
 
       {showIosSheet && (
         <div className="sheet-backdrop" onClick={() => setShowIosSheet(false)}>
           <div className="sheet-card" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
+
+            <div className="sheet-preview">
+              <img
+                src="/app/%D1%8D%D0%BF%D0%BF%D0%BB%20%D1%82%D0%B0%D1%87%20%D0%B0%D0%B9%D1%84%D0%BE%D0%BD%20.png"
+                alt="WhoIs"
+                className="sheet-preview-icon"
+              />
+              <div>
+                <div className="sheet-preview-title">WhoIs</div>
+                <div className="sheet-preview-sub">Веб-приложение для экрана «Домой»</div>
+              </div>
+            </div>
+
             <h2 className="sheet-title">Установка на iPhone</h2>
             <p className="sheet-desc">
               Чтобы играть без рамок браузера на весь экран:
