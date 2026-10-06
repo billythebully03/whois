@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Settings } from './settings';
 import { CreateRoom } from './create';
-import { RoomsList, RoomItem } from './rooms';
+import { RoomsList } from './rooms';
 import { supabase } from '../lib/supabase';
 
 const globImages = import.meta.glob<string>(
@@ -48,6 +48,15 @@ export const App: React.FC = () => {
   const [gameMode, setGameMode] = useState<'ai' | 'online'>('ai');
   const [hasExistingRoom, setHasExistingRoom] = useState(false);
 
+  const [userId] = useState<string>(() => {
+    let stored = localStorage.getItem('wtc_user_id');
+    if (!stored) {
+      stored = `user_${Math.random().toString(36).substring(2, 10)}`;
+      localStorage.setItem('wtc_user_id', stored);
+    }
+    return stored;
+  });
+
   const [nickname, setNickname] = useState<string>(() => {
     return localStorage.getItem('wtc_nickname') || 'Игрок';
   });
@@ -56,15 +65,28 @@ export const App: React.FC = () => {
     return localStorage.getItem('wtc_avatar') || null;
   });
 
+  const syncUserToDatabase = async (name: string, pic: string | null) => {
+    const client = supabase;
+    if (!client) return;
+    await client.from('users').upsert({
+      id: userId,
+      nickname: name,
+      avatar: pic,
+      updated_at: new Date().toISOString()
+    });
+  };
+
   useEffect(() => {
     const isIos = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     const isMediaStandalone = window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(Boolean(isIos || isMediaStandalone));
+    syncUserToDatabase(nickname, avatar);
   }, []);
 
   const checkUserExistingRoom = async () => {
-    if (!supabase) return;
-    const { data } = await supabase
+    const client = supabase;
+    if (!client) return;
+    const { data } = await client
       .from('rooms')
       .select('id')
       .eq('host_nickname', nickname)
@@ -89,6 +111,7 @@ export const App: React.FC = () => {
       localStorage.removeItem('wtc_avatar');
     }
 
+    syncUserToDatabase(newNick, newAvatar);
     setIsSettingsOpen(false);
   };
 
@@ -108,12 +131,6 @@ export const App: React.FC = () => {
     setIsCreateRoomOpen(false);
     checkUserExistingRoom();
     setIsRoomsListOpen(true);
-  };
-
-  const handleSelectRoom = (room: RoomItem) => {
-    if (room.host_nickname === nickname) {
-      return;
-    }
   };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
@@ -339,12 +356,12 @@ export const App: React.FC = () => {
       <RoomsList
         isOpen={isRoomsListOpen}
         nickname={nickname}
+        avatar={avatar}
         onClose={() => setIsRoomsListOpen(false)}
         onOpenCreate={() => {
           setIsRoomsListOpen(false);
           setIsCreateRoomOpen(true);
         }}
-        onSelectRoom={handleSelectRoom}
       />
 
       {showAiNotice && (
