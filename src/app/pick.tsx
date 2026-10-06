@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { RoomItem } from './rooms';
+import { RoomItem, RoomParticipant } from './rooms';
 import { supabase } from '../lib/supabase';
 
 interface PickScreenProps {
@@ -7,6 +7,7 @@ interface PickScreenProps {
   room: RoomItem | null;
   nickname: string;
   onExit: () => void;
+  onAllReady: () => void;
 }
 
 const globImages = import.meta.glob<string>(
@@ -38,7 +39,8 @@ export const PickScreen: React.FC<PickScreenProps> = ({
   isOpen,
   room,
   nickname,
-  onExit
+  onExit,
+  onAllReady
 }) => {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isReady, setIsReady] = useState(false);
@@ -134,16 +136,25 @@ export const PickScreen: React.FC<PickScreenProps> = ({
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${room.id}` },
-        (payload: { new: { players?: Array<{ ready?: boolean }>; status?: string } }) => {
+        (payload: { new: { players?: RoomParticipant[]; status?: string } }) => {
           if (payload.new) {
             if (payload.new.status === 'cancelled') {
               onExit();
               return;
             }
+            if (payload.new.status === 'roulette') {
+              onAllReady();
+              return;
+            }
             if (Array.isArray(payload.new.players)) {
               const readies = payload.new.players.filter((p) => p.ready).length;
+              const total = payload.new.players.length;
               setReadyCount(readies);
-              setTotalParticipants(payload.new.players.length);
+              setTotalParticipants(total);
+
+              if (total >= 2 && readies >= total) {
+                onAllReady();
+              }
             }
           }
         }
@@ -153,7 +164,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     return () => {
       client.removeChannel(channel);
     };
-  }, [isOpen, room?.id, onExit]);
+  }, [isOpen, room?.id, onExit, onAllReady]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     isDragging.current = true;
@@ -180,24 +191,40 @@ export const PickScreen: React.FC<PickScreenProps> = ({
   };
 
   const toggleReady = async () => {
-    if (!closestTile) return;
+    if (!closestTile || !room?.id) return;
     const nextState = !isReady;
     setIsReady(nextState);
 
-    if (room?.id && supabase) {
-      const client = supabase;
-      const { data } = await client.from('rooms').select('players').eq('id', room.id).single();
-      const currentList: Array<{ nickname: string; avatar: string | null; ready?: boolean; picked?: string }> =
-        data && Array.isArray(data.players) ? data.players : [];
+    const client = supabase;
+    if (client) {
+      const plist: RoomParticipant[] = Array.isArray(room.players) && room.players.length > 0
+        ? room.players
+        : [
+            { nickname: room.host_nickname, avatar: room.host_avatar, isHost: true },
+            { nickname: room.guest_nickname || 'Игрок 2', avatar: room.guest_avatar, isHost: false }
+          ];
 
-      const updated = currentList.map((p) => {
+      const updated = plist.map((p) => {
         if (p.nickname === nickname) {
           return { ...p, ready: nextState, picked: closestTile.img.name };
         }
         return p;
       });
 
-      await client.from('rooms').update({ players: updated }).eq('id', room.id);
+      const allAreReady = updated.length >= 2 && updated.every((p) => p.ready);
+
+      client
+        .from('rooms')
+        .update({
+          players: updated,
+          ...(allAreReady ? { status: 'roulette' } : {})
+        })
+        .eq('id', room.id)
+        .then(() => {});
+
+      if (allAreReady) {
+        onAllReady();
+      }
     }
   };
 
