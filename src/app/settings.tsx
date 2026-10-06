@@ -4,8 +4,7 @@ interface SettingsProps {
   isOpen: boolean;
   nickname: string;
   avatar: string | null;
-  questionCheck: boolean;
-  onSave: (newNick: string, newAvatar: string | null, newCheck: boolean) => void;
+  onSave: (newNick: string, newAvatar: string | null) => void;
   onClose: () => void;
 }
 
@@ -13,27 +12,21 @@ export const Settings: React.FC<SettingsProps> = ({
   isOpen,
   nickname,
   avatar,
-  questionCheck,
   onSave,
   onClose
 }) => {
   const [tempNick, setTempNick] = useState(nickname);
   const [tempAvatar, setTempAvatar] = useState<string | null>(avatar);
-  const [tempCheck, setTempCheck] = useState(questionCheck);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setTempNick(nickname);
       setTempAvatar(avatar);
-      setTempCheck(questionCheck);
     }
-  }, [isOpen, nickname, avatar, questionCheck]);
+  }, [isOpen, nickname, avatar]);
 
-  const hasChanges =
-    tempNick.trim() !== nickname ||
-    tempAvatar !== avatar ||
-    tempCheck !== questionCheck;
+  const hasChanges = tempNick.trim() !== nickname || tempAvatar !== avatar;
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,7 +42,7 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleSave = () => {
-    onSave(tempNick.trim() || 'Игрок', tempAvatar, tempCheck);
+    onSave(tempNick.trim() || 'Игрок', tempAvatar);
   };
 
   return (
@@ -113,22 +106,6 @@ export const Settings: React.FC<SettingsProps> = ({
                   style={{ display: 'none' }}
                   onChange={handleAvatarSelect}
                 />
-              </div>
-            </div>
-
-            <div
-              className="flat-toggle-row"
-              onClick={() => setTempCheck((prev) => !prev)}
-            >
-              <div className={`flat-toggle-text ${!tempCheck ? 'dimmed' : ''}`}>
-                <span className="flat-toggle-title">Проверка вопроса</span>
-                <span className="flat-toggle-desc">
-                  ИИ проверяет, не нарушает ли вопрос правила игры
-                </span>
-              </div>
-
-              <div className={`circle-switch ${tempCheck ? 'on' : ''}`}>
-                <div className="circle-switch-dot" />
               </div>
             </div>
           </div>
