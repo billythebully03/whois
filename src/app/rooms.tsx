@@ -17,6 +17,7 @@ export interface RoomItem {
   guest_nickname: string | null;
   guest_avatar: string | null;
   players?: RoomParticipant[];
+  starter_nickname?: string | null;
   theme_type: string;
   selected_universes: string[];
   game_rule: string;
@@ -80,10 +81,15 @@ export const RoomsList: React.FC<RoomsListProps> = ({
           fetchRooms();
           if (payload.eventType === 'UPDATE' && payload.new) {
             const updated = payload.new as RoomItem;
+            const oldRow = payload.old as Partial<RoomItem> | null;
             const plist = getRoomPlayers(updated);
             const isUserInRoom = plist.some((p) => p.nickname === nickname);
 
-            if (updated.status === 'picking' && isUserInRoom) {
+            if (
+              updated.status === 'picking' &&
+              oldRow?.status !== 'picking' &&
+              isUserInRoom
+            ) {
               onStartMatch(updated);
             }
           }
