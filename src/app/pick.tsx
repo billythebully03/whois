@@ -15,10 +15,13 @@ const globImages = import.meta.glob<string>(
 );
 
 const formatCleanTitle = (path: string): string => {
-  const fileWithExt = path.split('/').pop() || '';
-  const nameWithoutExt = fileWithExt.replace(/\.[^/.]+$/, '');
-  const words = nameWithoutExt.replace(/[_-]+/g, ' ').trim().split(/\s+/);
+  const cleanPath = path.split('?')[0].split('#')[0];
+  const fileWithExt = cleanPath.split('/').pop() || '';
+  let baseName = fileWithExt.replace(/\.[^/.]+$/, '');
+  baseName = baseName.replace(/[-_][a-zA-Z0-9]{4,10}$/, '');
+  const words = baseName.replace(/[_-]+/g, ' ').trim().split(/\s+/);
   return words
+    .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 };
@@ -42,6 +45,8 @@ export const PickScreen: React.FC<PickScreenProps> = ({
   const [readyCount, setReadyCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(2);
   const [dimOpacity, setDimOpacity] = useState(1);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const panStart = useRef({ x: 0, y: 0 });
@@ -62,7 +67,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     return relevantImages[Math.floor(Math.random() * relevantImages.length)];
   }, [relevantImages]);
 
-  const CELL_SPACING = 125;
+  const CELL_SPACING = 108;
 
   const visibleTiles = useMemo(() => {
     if (relevantImages.length === 0) return [];
@@ -70,10 +75,10 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     const viewportHalfW = typeof window !== 'undefined' ? window.innerWidth / 2 : 220;
     const viewportHalfH = typeof window !== 'undefined' ? window.innerHeight / 2 : 400;
 
-    const minCol = Math.floor((-pan.x - viewportHalfW - 140) / CELL_SPACING);
-    const maxCol = Math.ceil((-pan.x + viewportHalfW + 140) / CELL_SPACING);
-    const minRow = Math.floor((-pan.y - viewportHalfH - 140) / CELL_SPACING);
-    const maxRow = Math.ceil((-pan.y + viewportHalfH + 140) / CELL_SPACING);
+    const minCol = Math.floor((-pan.x - viewportHalfW - 130) / CELL_SPACING);
+    const maxCol = Math.ceil((-pan.x + viewportHalfW + 130) / CELL_SPACING);
+    const minRow = Math.floor((-pan.y - viewportHalfH - 130) / CELL_SPACING);
+    const maxRow = Math.ceil((-pan.y + viewportHalfH + 130) / CELL_SPACING);
 
     const tiles = [];
     for (let c = minCol; c <= maxCol; c++) {
@@ -117,13 +122,14 @@ export const PickScreen: React.FC<PickScreenProps> = ({
       setDimOpacity(1);
       setPan({ x: 0, y: 0 });
       setIsReady(false);
+      setShowExitConfirm(false);
 
       const playersCount = Array.isArray(room?.players) && room?.players.length > 0 ? room.players.length : 2;
       setTotalParticipants(playersCount);
 
       const timer = setTimeout(() => {
         setDimOpacity(0);
-      }, 950);
+      }, 900);
       return () => clearTimeout(timer);
     }
   }, [isOpen, room]);
@@ -137,11 +143,17 @@ export const PickScreen: React.FC<PickScreenProps> = ({
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${room.id}` },
-        (payload: { new: { players?: Array<{ ready?: boolean }> } }) => {
-          if (payload.new && Array.isArray(payload.new.players)) {
-            const readies = payload.new.players.filter((p) => p.ready).length;
-            setReadyCount(readies);
-            setTotalParticipants(payload.new.players.length);
+        (payload: { new: { players?: Array<{ ready?: boolean }>; status?: string } }) => {
+          if (payload.new) {
+            if (payload.new.status === 'cancelled') {
+              onExit();
+              return;
+            }
+            if (Array.isArray(payload.new.players)) {
+              const readies = payload.new.players.filter((p) => p.ready).length;
+              setReadyCount(readies);
+              setTotalParticipants(payload.new.players.length);
+            }
           }
         }
       )
@@ -150,7 +162,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     return () => {
       client.removeChannel(channel);
     };
-  }, [isOpen, room?.id]);
+  }, [isOpen, room?.id, onExit]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     isDragging.current = true;
@@ -198,6 +210,15 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     }
   };
 
+  const handleConfirmExit = async () => {
+    setShowExitConfirm(false);
+    if (room?.id && supabase) {
+      const client = supabase;
+      await client.from('rooms').update({ status: 'cancelled' }).eq('id', room.id);
+    }
+    onExit();
+  };
+
   const selectedName = closestTile?.img.name || 'Персонаж';
 
   return (
@@ -210,7 +231,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
       >
         <button
           type="button"
-          onClick={onExit}
+          onClick={() => setShowExitConfirm(true)}
           style={{
             position: 'absolute',
             top: 'max(env(safe-area-inset-top), 18px)',
@@ -248,7 +269,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
             const d = Math.sqrt(screenX * screenX + screenY * screenY);
 
             const isSelected = closestTile?.key === tile.key;
-            const scale = Math.max(0.68, Math.min(1.22, 1.22 - d * 0.0022));
+            const scale = Math.max(0.66, Math.min(1.2, 1.2 - d * 0.0022));
             const blur = isSelected ? 0 : Math.min(3.5, d * 0.009);
             const opacity = Math.max(0.4, Math.min(1, 1 - d * 0.0025));
 
@@ -257,7 +278,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
                 key={tile.key}
                 className={`pick-card-item ${isSelected ? 'selected' : ''}`}
                 style={{
-                  transform: `translate(${tile.x - 48}px, ${tile.y - 48}px) scale(${scale})`,
+                  transform: `translate(${tile.x - 47}px, ${tile.y - 47}px) scale(${scale})`,
                   filter: `blur(${blur}px)`,
                   opacity
                 }}
@@ -271,7 +292,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
         <div className="pick-bottom-bar">
           <div className="pick-info-col">
             <h2 className="pick-char-name">{selectedName}</h2>
-            <span className="pick-char-sub">— Твой выбор</span>
+            <span className="pick-char-sub">Этот герой станет твоим секретом</span>
           </div>
 
           <button
@@ -284,6 +305,38 @@ export const PickScreen: React.FC<PickScreenProps> = ({
               : `Выбрать (${readyCount}/${totalParticipants})`}
           </button>
         </div>
+
+        {showExitConfirm && (
+          <div className="dialog-backdrop" onClick={() => setShowExitConfirm(false)}>
+            <div className="dialog-card" onClick={(e) => e.stopPropagation()}>
+              <div className="dialog-icon-circle danger">
+                <span className="material-symbols-rounded">logout</span>
+              </div>
+              <div>
+                <h2 className="dialog-title">Покинуть матч</h2>
+                <p className="dialog-desc">
+                  Вы уверены, что хотите выйти? Текущая игровая сессия будет завершена для всех участников комнаты.
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                <button
+                  type="button"
+                  className="btn-pill danger"
+                  onClick={handleConfirmExit}
+                >
+                  Покинуть игру
+                </button>
+                <button
+                  type="button"
+                  className="btn-pill outline"
+                  onClick={() => setShowExitConfirm(false)}
+                >
+                  Остаться
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );
