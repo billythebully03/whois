@@ -21,6 +21,8 @@ interface RoomsListProps {
   avatar: string | null;
   onClose: () => void;
   onOpenCreate: () => void;
+  onRoomDeleted: () => void;
+  onStartMatch: (room: RoomItem) => void;
 }
 
 export const RoomsList: React.FC<RoomsListProps> = ({
@@ -28,7 +30,9 @@ export const RoomsList: React.FC<RoomsListProps> = ({
   nickname,
   avatar,
   onClose,
-  onOpenCreate
+  onOpenCreate,
+  onRoomDeleted,
+  onStartMatch
 }) => {
   const [rooms, setRooms] = useState<RoomItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,8 +67,17 @@ export const RoomsList: React.FC<RoomsListProps> = ({
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rooms' },
-        () => {
+        (payload) => {
           fetchRooms();
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            const updated = payload.new as RoomItem;
+            if (
+              updated.status === 'picking' &&
+              (updated.host_nickname === nickname || updated.guest_nickname === nickname)
+            ) {
+              onStartMatch(updated);
+            }
+          }
         }
       )
       .subscribe();
@@ -72,19 +85,14 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     return () => {
       client.removeChannel(channel);
     };
-  }, []);
+  }, [nickname, onStartMatch]);
 
   const hasMyRoom = rooms.some((r) => r.host_nickname === nickname);
 
   const handleCardClick = async (room: RoomItem) => {
     const isOwn = room.host_nickname === nickname;
-    if (isOwn) {
-      return;
-    }
-
-    if (activeRoomId === room.id) {
-      return;
-    }
+    if (isOwn) return;
+    if (activeRoomId === room.id) return;
 
     const client = supabase;
     if (!client) return;
@@ -109,6 +117,8 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     if (isOwn) {
       await client.from('rooms').delete().eq('id', room.id);
       setActiveRoomId(null);
+      onRoomDeleted();
+      fetchRooms();
     } else {
       await client
         .from('rooms')
@@ -118,7 +128,21 @@ export const RoomsList: React.FC<RoomsListProps> = ({
         })
         .eq('id', room.id);
       setActiveRoomId(null);
+      fetchRooms();
     }
+  };
+
+  const handleLaunchGame = async (e: React.MouseEvent, room: RoomItem) => {
+    e.stopPropagation();
+    const client = supabase;
+    if (!client) return;
+
+    await client
+      .from('rooms')
+      .update({ status: 'picking' })
+      .eq('id', room.id);
+
+    onStartMatch({ ...room, status: 'picking' });
   };
 
   const filteredRooms = rooms
@@ -282,15 +306,13 @@ export const RoomsList: React.FC<RoomsListProps> = ({
                               type="button"
                               className="btn-start-circle"
                               aria-label="Начать игру"
+                              onClick={(e) => handleLaunchGame(e, room)}
                             >
                               <span className="material-symbols-rounded">play_arrow</span>
                             </button>
                           ) : (
-                            <div className="waiting-progress-box">
-                              <div className="waiting-progress-track">
-                                <div className="waiting-progress-bar" />
-                              </div>
-                              <span className="waiting-progress-text">Ожидание...</span>
+                            <div className="waiting-circular-box">
+                              <div className="spinner-circle" />
                             </div>
                           )}
                         </div>
