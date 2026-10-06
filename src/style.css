@@ -50,43 +50,6 @@ html, body {
   overflow: hidden;
 }
 
-.view-panel {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.36s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.36s ease;
-  will-change: transform, opacity;
-}
-
-.view-panel.home-active {
-  transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.view-panel.home-pushed {
-  transform: translateX(-26%);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.view-panel.settings-active {
-  transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 10;
-}
-
-.view-panel.settings-hidden {
-  transform: translateX(100%);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 10;
-}
-
 .home-view {
   width: 100%;
   height: 100%;
@@ -441,6 +404,22 @@ html, body {
   padding: 8px 14px;
 }
 
+.settings-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg);
+  z-index: 20;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+.settings-overlay.is-open {
+  transform: translateX(0);
+}
+
 .settings-view {
   width: 100%;
   height: 100%;
@@ -450,7 +429,6 @@ html, body {
   padding: 24px 20px 24px;
   max-width: 440px;
   margin: 0 auto;
-  background-color: var(--bg);
 }
 
 .settings-header {
