@@ -118,15 +118,19 @@ export const App: React.FC = () => {
         { event: '*', schema: 'public', table: 'rooms' },
         (payload) => {
           checkUserExistingRoom();
-          if (
-            payload.eventType === 'UPDATE' &&
-            payload.new &&
-            (payload.new as { status?: string }).status === 'cancelled' &&
-            activeGameRoom?.id === (payload.new as { id?: string }).id
-          ) {
-            setIsPickOpen(false);
-            setIsRouletteOpen(false);
-            setActiveGameRoom(null);
+
+          if (payload.new && activeGameRoom?.id === (payload.new as { id?: string }).id) {
+            const updated = payload.new as RoomItem;
+            setActiveGameRoom(updated);
+
+            if (updated.status === 'cancelled') {
+              setIsPickOpen(false);
+              setIsRouletteOpen(false);
+              setActiveGameRoom(null);
+            } else if (updated.status === 'roulette') {
+              setIsPickOpen(false);
+              setIsRouletteOpen(true);
+            }
           }
         }
       )
@@ -180,8 +184,8 @@ export const App: React.FC = () => {
       setIsPickOpen(true);
       setTimeout(() => {
         setIsScreenDimmed(false);
-      }, 60);
-    }, 350);
+      }, 50);
+    }, 320);
   };
 
   const handleAllReadyTransition = () => {
