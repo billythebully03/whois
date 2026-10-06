@@ -67,13 +67,23 @@ export const PickScreen: React.FC<PickScreenProps> = ({
   useEffect(() => {
     if (isOpen) {
       setPan({ x: 0, y: 0 });
-      setIsReady(false);
       setShowExitConfirm(false);
+
       if (relevantImages.length > 0) {
         setRandomCenterIndex(Math.floor(Math.random() * relevantImages.length));
       }
-      const initialCount = Array.isArray(room?.players) && room?.players.length > 0 ? room.players.length : 2;
-      setTotalParticipants(initialCount);
+
+      if (room && Array.isArray(room.players)) {
+        const readies = room.players.filter((p) => p.ready).length;
+        setReadyCount(readies);
+        setTotalParticipants(room.players.length);
+        const me = room.players.find((p) => p.nickname === nickname);
+        setIsReady(Boolean(me?.ready));
+      } else {
+        setTotalParticipants(2);
+        setReadyCount(0);
+        setIsReady(false);
+      }
     }
   }, [isOpen]);
 
@@ -152,6 +162,11 @@ export const PickScreen: React.FC<PickScreenProps> = ({
               setReadyCount(readies);
               setTotalParticipants(total);
 
+              const me = payload.new.players.find((p) => p.nickname === nickname);
+              if (me !== undefined) {
+                setIsReady(Boolean(me.ready));
+              }
+
               if (total >= 2 && readies >= total) {
                 onAllReady();
               }
@@ -164,7 +179,7 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     return () => {
       client.removeChannel(channel);
     };
-  }, [isOpen, room?.id, onExit, onAllReady]);
+  }, [isOpen, room?.id, nickname, onExit, onAllReady]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     isDragging.current = true;
@@ -196,35 +211,46 @@ export const PickScreen: React.FC<PickScreenProps> = ({
     setIsReady(nextState);
 
     const client = supabase;
-    if (client) {
-      const plist: RoomParticipant[] = Array.isArray(room.players) && room.players.length > 0
-        ? room.players
-        : [
-            { nickname: room.host_nickname, avatar: room.host_avatar, isHost: true },
-            { nickname: room.guest_nickname || 'Игрок 2', avatar: room.guest_avatar, isHost: false }
-          ];
+    if (!client) return;
 
-      const updated = plist.map((p) => {
-        if (p.nickname === nickname) {
-          return { ...p, ready: nextState, picked: closestTile.img.name };
-        }
-        return p;
-      });
+    const { data: latestRoom } = await client
+      .from('rooms')
+      .select('players, host_nickname, host_avatar, guest_nickname, guest_avatar')
+      .eq('id', room.id)
+      .single();
 
-      const allAreReady = updated.length >= 2 && updated.every((p) => p.ready);
+    let plist: RoomParticipant[] = [];
+    if (latestRoom && Array.isArray(latestRoom.players) && latestRoom.players.length > 0) {
+      plist = latestRoom.players;
+    } else if (latestRoom) {
+      plist = [
+        { nickname: latestRoom.host_nickname, avatar: latestRoom.host_avatar, isHost: true },
+        { nickname: latestRoom.guest_nickname || 'Игрок 2', avatar: latestRoom.guest_avatar, isHost: false }
+      ];
+    }
 
-      client
-        .from('rooms')
-        .update({
-          players: updated,
-          ...(allAreReady ? { status: 'roulette' } : {})
-        })
-        .eq('id', room.id)
-        .then(() => {});
-
-      if (allAreReady) {
-        onAllReady();
+    const updated = plist.map((p) => {
+      if (p.nickname === nickname) {
+        return { ...p, ready: nextState, picked: closestTile.img.name };
       }
+      return p;
+    });
+
+    const activeReadies = updated.filter((p) => p.ready).length;
+    setReadyCount(activeReadies);
+
+    const allAreReady = updated.length >= 2 && updated.every((p) => p.ready);
+
+    await client
+      .from('rooms')
+      .update({
+        players: updated,
+        ...(allAreReady ? { status: 'roulette' } : {})
+      })
+      .eq('id', room.id);
+
+    if (allAreReady) {
+      onAllReady();
     }
   };
 
