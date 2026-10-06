@@ -45,6 +45,7 @@ export const App: React.FC = () => {
   const [isRoomsListOpen, setIsRoomsListOpen] = useState(false);
   const [isPickOpen, setIsPickOpen] = useState(false);
   const [activeGameRoom, setActiveGameRoom] = useState<RoomItem | null>(null);
+  const [isScreenDimmed, setIsScreenDimmed] = useState(false);
 
   const [showAiNotice, setShowAiNotice] = useState(false);
   const [showIosSheet, setShowIosSheet] = useState(false);
@@ -167,9 +168,15 @@ export const App: React.FC = () => {
   };
 
   const handleStartMatch = (room: RoomItem) => {
-    setActiveGameRoom(room);
-    setIsRoomsListOpen(false);
-    setIsPickOpen(true);
+    setIsScreenDimmed(true);
+    setTimeout(() => {
+      setActiveGameRoom(room);
+      setIsRoomsListOpen(false);
+      setIsPickOpen(true);
+      setTimeout(() => {
+        setIsScreenDimmed(false);
+      }, 80);
+    }, 380);
   };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
@@ -198,6 +205,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-viewport">
+      <div className={`global-screen-dim ${isScreenDimmed ? 'dimmed' : ''}`} />
+
       <main className="home-view">
         <div className="home-top">
           <header className="profile-card">
