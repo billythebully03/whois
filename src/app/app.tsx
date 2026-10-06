@@ -181,28 +181,32 @@ export const App: React.FC = () => {
       </div>
 
       <section className="home-bottom">
-        <div className="mode-segmented">
-          <button
-            type="button"
-            className={`mode-segment ${gameMode === 'ai' ? 'active' : ''}`}
-            onClick={() => setGameMode('ai')}
-          >
-            <span className="material-symbols-rounded">smart_toy</span>
-            <span>С ИИ</span>
-          </button>
-          <button
-            type="button"
-            className={`mode-segment ${gameMode === 'online' ? 'active' : ''}`}
-            onClick={() => setGameMode('online')}
-          >
-            <span className="material-symbols-rounded">groups</span>
-            <span>Онлайн</span>
+        <div className="play-stack">
+          <div className="peeker-card">
+            <div className="peeker-segments">
+              <button
+                type="button"
+                className={`peeker-segment ${gameMode === 'ai' ? 'active' : ''}`}
+                onClick={() => setGameMode('ai')}
+              >
+                <span className="material-symbols-rounded">smart_toy</span>
+                <span>С ИИ</span>
+              </button>
+              <button
+                type="button"
+                className={`peeker-segment ${gameMode === 'online' ? 'active' : ''}`}
+                onClick={() => setGameMode('online')}
+              >
+                <span className="material-symbols-rounded">groups</span>
+                <span>Онлайн</span>
+              </button>
+            </div>
+          </div>
+
+          <button type="button" className="btn-pill primary">
+            Играть
           </button>
         </div>
-
-        <button type="button" className="btn-pill primary">
-          Играть
-        </button>
 
         <button type="button" className="btn-pill outline">
           Присоединиться
