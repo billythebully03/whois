@@ -37,7 +37,6 @@ const shuffleList = (arr: string[]) => {
 export const App: React.FC = () => {
   const [showIosSheet, setShowIosSheet] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [isPlayDrawerOpen, setIsPlayDrawerOpen] = useState(false);
   const [gameMode, setGameMode] = useState<'ai' | 'online'>('ai');
 
   const [nickname] = useState<string>(() => {
@@ -182,45 +181,28 @@ export const App: React.FC = () => {
       </div>
 
       <section className="home-bottom">
-        <div className="play-drawer-card">
+        <div className="mode-segmented">
           <button
             type="button"
-            className="btn-pill primary"
-            onClick={() => setIsPlayDrawerOpen((prev) => !prev)}
+            className={`mode-segment ${gameMode === 'ai' ? 'active' : ''}`}
+            onClick={() => setGameMode('ai')}
           >
-            <span>Играть</span>
-            <span
-              className={`material-symbols-rounded expand-chevron ${
-                isPlayDrawerOpen ? 'rotated' : ''
-              }`}
-            >
-              expand_more
-            </span>
+            <span className="material-symbols-rounded">smart_toy</span>
+            <span>С ИИ</span>
           </button>
-
-          <div className={`play-drawer-panel ${isPlayDrawerOpen ? 'open' : ''}`}>
-            <div className="play-drawer-inner">
-              <div className="mode-segmented">
-                <button
-                  type="button"
-                  className={`mode-segment ${gameMode === 'ai' ? 'active' : ''}`}
-                  onClick={() => setGameMode('ai')}
-                >
-                  <span className="material-symbols-rounded">smart_toy</span>
-                  <span>С ИИ</span>
-                </button>
-                <button
-                  type="button"
-                  className={`mode-segment ${gameMode === 'online' ? 'active' : ''}`}
-                  onClick={() => setGameMode('online')}
-                >
-                  <span className="material-symbols-rounded">groups</span>
-                  <span>Онлайн</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            className={`mode-segment ${gameMode === 'online' ? 'active' : ''}`}
+            onClick={() => setGameMode('online')}
+          >
+            <span className="material-symbols-rounded">groups</span>
+            <span>Онлайн</span>
+          </button>
         </div>
+
+        <button type="button" className="btn-pill primary">
+          Играть
+        </button>
 
         <button type="button" className="btn-pill outline">
           Присоединиться
