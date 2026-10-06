@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface CreateRoomProps {
@@ -10,11 +10,18 @@ interface CreateRoomProps {
   hasExistingRoom: boolean;
 }
 
+const globImages = import.meta.glob<string>(
+  '/public/pics/**/*.{png,jpg,jpeg,webp,PNG,JPG,JPEG,WEBP}',
+  { eager: true, query: '?url', import: 'default' }
+);
+
+const allImagePaths = Object.keys(globImages);
+
 const universeOptions = [
-  { id: 'marvel', label: 'Marvel' },
-  { id: 'the_boys', label: 'The Boys' },
-  { id: 'invincible', label: 'Invincible' },
-  { id: 'star_wars', label: 'Star Wars' }
+  { id: 'marvel', label: 'Marvel', folder: 'Marvel' },
+  { id: 'the_boys', label: 'The Boys', folder: 'TheBoys' },
+  { id: 'invincible', label: 'Invincible', folder: 'Invincible' },
+  { id: 'star_wars', label: 'Star Wars', folder: 'StarWars' }
 ];
 
 export const CreateRoom: React.FC<CreateRoomProps> = ({
@@ -32,9 +39,24 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  const availableUniverses = useMemo(() => {
+    const found = new Set<string>();
+    universeOptions.forEach((opt) => {
+      const hasFiles = allImagePaths.some((p) =>
+        p.toLowerCase().includes(`/pics/${opt.folder.toLowerCase()}/`)
+      );
+      if (hasFiles) {
+        found.add(opt.id);
+      }
+    });
+    return found;
+  }, []);
+
+  const defaultSingle = universeOptions.find((u) => availableUniverses.has(u.id))?.id || 'marvel';
+
   const [themeTab, setThemeTab] = useState<'all' | 'single' | 'double'>('all');
-  const [singleUniverse, setSingleUniverse] = useState('marvel');
-  const [doubleUniverses, setDoubleUniverses] = useState(['marvel', 'the_boys']);
+  const [singleUniverse, setSingleUniverse] = useState(defaultSingle);
+  const [doubleUniverses, setDoubleUniverses] = useState<string[]>([]);
   const [gameRule, setGameRule] = useState<'classic' | 'double_trouble'>('classic');
   const [questionCheck, setQuestionCheck] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,8 +66,14 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
       setRoomTitle(`Комната ${truncatedNick}`);
       setIsEditingTitle(false);
       setIsSubmitting(false);
+      const availList = Array.from(availableUniverses);
+      if (availList.length >= 2) {
+        setDoubleUniverses([availList[0], availList[1]]);
+      } else if (availList.length === 1) {
+        setDoubleUniverses([availList[0]]);
+      }
     }
-  }, [isOpen, truncatedNick]);
+  }, [isOpen, truncatedNick, availableUniverses]);
 
   useEffect(() => {
     if (isEditingTitle) {
@@ -54,6 +82,8 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
   }, [isEditingTitle]);
 
   const toggleDoubleUniverse = (id: string) => {
+    if (!availableUniverses.has(id)) return;
+
     if (doubleUniverses.includes(id)) {
       if (doubleUniverses.length > 1) {
         setDoubleUniverses(doubleUniverses.filter((u) => u !== id));
@@ -161,30 +191,36 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
 
               {themeTab === 'single' && (
                 <div className="sub-chips-row">
-                  {universeOptions.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      className={`sub-chip ${
-                        singleUniverse === u.id ? 'active' : ''
-                      }`}
-                      onClick={() => setSingleUniverse(u.id)}
-                    >
-                      {u.label}
-                    </button>
-                  ))}
+                  {universeOptions.map((u) => {
+                    const isAvail = availableUniverses.has(u.id);
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className={`sub-chip ${
+                          singleUniverse === u.id ? 'active' : ''
+                        } ${!isAvail ? 'disabled' : ''}`}
+                        onClick={() => isAvail && setSingleUniverse(u.id)}
+                      >
+                        {u.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
               {themeTab === 'double' && (
                 <div className="sub-chips-row">
                   {universeOptions.map((u) => {
+                    const isAvail = availableUniverses.has(u.id);
                     const isSelected = doubleUniverses.includes(u.id);
                     return (
                       <button
                         key={u.id}
                         type="button"
-                        className={`sub-chip ${isSelected ? 'active' : ''}`}
+                        className={`sub-chip ${isSelected ? 'active' : ''} ${
+                          !isAvail ? 'disabled' : ''
+                        }`}
                         onClick={() => toggleDoubleUniverse(u.id)}
                       >
                         {u.label}
@@ -196,9 +232,9 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
 
               <p className="room-desc-box">
                 {themeTab === 'all' &&
-                  'В игре участвуют персонажи сразу из всех вселенных без ограничений.'}
+                  'В игре участвуют персонажи сразу из всех доступных вселенных.'}
                 {themeTab === 'single' &&
-                  'Все 36 карточек доски формируются строго из выбранной вселенной.'}
+                  'Все карточки доски формируются строго из одной выбранной вселенной.'}
                 {themeTab === 'double' &&
                   'Доска составляется поровну из персонажей двух выбранных вселенных.'}
               </p>
