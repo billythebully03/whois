@@ -43,16 +43,17 @@ export const RouletteScreen: React.FC<RouletteScreenProps> = ({
     return map;
   }, [playersList]);
 
+  const ITEM_HEIGHT = 64;
+  const REPEAT_COUNT = 90;
+
   const drumSequence = useMemo(() => {
     if (playersList.length === 0) return [];
     const seq = [];
-    for (let i = 0; i < 48; i++) {
+    for (let i = 0; i < REPEAT_COUNT * playersList.length; i++) {
       seq.push(playersList[i % playersList.length].nickname);
     }
     return seq;
   }, [playersList]);
-
-  const ITEM_HEIGHT = 72;
 
   useEffect(() => {
     if (!isOpen || playersList.length === 0 || !room?.id) return;
@@ -62,36 +63,53 @@ export const RouletteScreen: React.FC<RouletteScreenProps> = ({
     setSpinOffset(0);
 
     const client = supabase;
-    if (isHost && client) {
-      const chosen = playersList[Math.floor(Math.random() * playersList.length)].nickname;
+    const chosenWinner = room.starter_nickname || playersList[Math.floor(Math.random() * playersList.length)].nickname;
+
+    if (isHost && client && !room.starter_nickname) {
       client
         .from('rooms')
-        .update({ starter_nickname: chosen })
+        .update({ starter_nickname: chosenWinner })
         .eq('id', room.id)
         .then(() => {});
     }
 
     const timer = setTimeout(() => {
-      const targetWinner = room.starter_nickname || playersList[0].nickname;
-      let targetIndex = drumSequence.lastIndexOf(targetWinner);
-      if (targetIndex < 24) targetIndex = 24;
+      let targetIndex = -1;
+      for (let i = Math.floor(drumSequence.length * 0.65); i < drumSequence.length; i++) {
+        if (drumSequence[i] === chosenWinner) {
+          targetIndex = i;
+          break;
+        }
+      }
+      if (targetIndex === -1) targetIndex = Math.floor(drumSequence.length * 0.7);
 
-      const totalDistance = targetIndex * ITEM_HEIGHT;
+      const targetPos = targetIndex * ITEM_HEIGHT;
       const startTime = performance.now();
-      const duration = 3800;
+      const FAST_DURATION = 2000;
+      const DECEL_DURATION = 2000;
+      const TOTAL_DURATION = FAST_DURATION + DECEL_DURATION;
+
+      const FAST_PORTION = 0.55;
+      const fastTargetDistance = targetPos * FAST_PORTION;
+      const decelTargetDistance = targetPos * (1 - FAST_PORTION);
 
       const animate = (now: number) => {
         const elapsed = now - startTime;
-        const progress = Math.min(1, elapsed / duration);
 
-        const easeOut = 1 - Math.pow(1 - progress, 3.5);
-        const currentPos = totalDistance * easeOut;
-        setSpinOffset(currentPos);
-
-        if (progress < 1) {
+        if (elapsed < FAST_DURATION) {
+          const t = elapsed / FAST_DURATION;
+          const current = fastTargetDistance * t;
+          setSpinOffset(current);
+          animRef.current = requestAnimationFrame(animate);
+        } else if (elapsed < TOTAL_DURATION) {
+          const t = (elapsed - FAST_DURATION) / DECEL_DURATION;
+          const easeOut = 1 - Math.pow(1 - t, 3.2);
+          const current = fastTargetDistance + decelTargetDistance * easeOut;
+          setSpinOffset(current);
           animRef.current = requestAnimationFrame(animate);
         } else {
-          setWinnerName(targetWinner);
+          setSpinOffset(targetPos);
+          setWinnerName(chosenWinner);
           setIsDone(true);
         }
       };
@@ -110,7 +128,7 @@ export const RouletteScreen: React.FC<RouletteScreenProps> = ({
     const client = supabase;
 
     const channel = client
-      .channel(`roulette_sub_${room.id}`)
+      .channel(`roulette_sync_${room.id}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${room.id}` },
@@ -127,6 +145,7 @@ export const RouletteScreen: React.FC<RouletteScreenProps> = ({
     };
   }, [isOpen, room?.id, winnerName]);
 
+  const STAGE_HALF_HEIGHT = 190;
   const activeColor = winnerName ? colorMap.get(winnerName) || '#ffffff' : '#ffffff';
 
   return (
@@ -135,13 +154,13 @@ export const RouletteScreen: React.FC<RouletteScreenProps> = ({
         <div className="roulette-drum-stage">
           <div
             className="roulette-drum-track"
-            style={{ transform: `translateY(-${spinOffset}px)` }}
+            style={{ transform: `translateY(${STAGE_HALF_HEIGHT - ITEM_HEIGHT / 2 - spinOffset}px)` }}
           >
             {drumSequence.map((nick, idx) => {
               const itemCenterY = idx * ITEM_HEIGHT - spinOffset;
               const distFromCenter = Math.abs(itemCenterY);
-              const scale = Math.max(0.72, Math.min(1.22, 1.22 - distFromCenter * 0.0035));
-              const opacity = Math.max(0.2, Math.min(1, 1 - distFromCenter * 0.005));
+              const scale = Math.max(0.68, Math.min(1.35, 1.35 - distFromCenter * 0.0042));
+              const opacity = Math.max(0.2, Math.min(1, 1 - distFromCenter * 0.0055));
               const itemColor = colorMap.get(nick) || '#ffffff';
 
               return (
