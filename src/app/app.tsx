@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 
 const globImages = import.meta.glob<string>(
   '/public/pics/**/*.{png,jpg,jpeg,webp,PNG,JPG,JPEG,WEBP}',
@@ -35,19 +35,70 @@ const shuffleList = (arr: string[]) => {
 };
 
 export const App: React.FC = () => {
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'settings'>('home');
   const [showIosSheet, setShowIosSheet] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [gameMode, setGameMode] = useState<'ai' | 'online'>('ai');
 
-  const [nickname] = useState<string>(() => {
+  const [nickname, setNickname] = useState<string>(() => {
     return localStorage.getItem('wtc_nickname') || 'Игрок';
   });
+
+  const [avatar, setAvatar] = useState<string | null>(() => {
+    return localStorage.getItem('wtc_avatar') || null;
+  });
+
+  const [tempNick, setTempNick] = useState<string>(nickname);
+  const [tempAvatar, setTempAvatar] = useState<string | null>(avatar);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const isIos = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     const isMediaStandalone = window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(Boolean(isIos || isMediaStandalone));
   }, []);
+
+  const openSettings = () => {
+    setTempNick(nickname);
+    setTempAvatar(avatar);
+    setCurrentScreen('settings');
+  };
+
+  const closeSettings = () => {
+    setCurrentScreen('home');
+  };
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setTempAvatar(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const hasSettingsChanges = tempNick.trim() !== nickname || tempAvatar !== avatar;
+
+  const saveSettings = () => {
+    const cleanNick = tempNick.trim() || 'Игрок';
+    setNickname(cleanNick);
+    localStorage.setItem('wtc_nickname', cleanNick);
+
+    if (tempAvatar) {
+      setAvatar(tempAvatar);
+      localStorage.setItem('wtc_avatar', tempAvatar);
+    } else {
+      setAvatar(null);
+      localStorage.removeItem('wtc_avatar');
+    }
+
+    closeSettings();
+  };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
     const randomized = shuffleList(allPics);
@@ -74,164 +125,272 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <main className="home-view">
-      <div className="home-top">
-        <header className="profile-card">
-          <div className="profile-info">
-            <div className="avatar-placeholder">
-              <span className="material-symbols-rounded">person</span>
-            </div>
-            <span className="profile-nick">{nickname}</span>
+    <div className="app-viewport">
+      <div
+        className={`view-panel ${
+          currentScreen === 'home' ? 'home-active' : 'home-pushed'
+        }`}
+      >
+        <main className="home-view">
+          <div className="home-top">
+            <header className="profile-card">
+              <div className="profile-info">
+                <div className="avatar-placeholder">
+                  {avatar ? (
+                    <img src={avatar} alt="" />
+                  ) : (
+                    <span className="material-symbols-rounded">person</span>
+                  )}
+                </div>
+                <span className="profile-nick">{nickname}</span>
+              </div>
+              <button
+                type="button"
+                className="btn-settings"
+                aria-label="Настройки"
+                onClick={openSettings}
+              >
+                <span className="material-symbols-rounded">settings</span>
+              </button>
+            </header>
+
+            <section className="hero-box">
+              <div className="marquee-columns">
+                <div className="marquee-col c1">
+                  <div className="track-up">
+                    {col1.map((src, i) => (
+                      <div key={i} className="marquee-card">
+                        <img
+                          src={src}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0.35';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="marquee-col c2">
+                  <div className="track-down">
+                    {col2.map((src, i) => (
+                      <div key={i} className="marquee-card">
+                        <img
+                          src={src}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0.35';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="marquee-col c3">
+                  <div className="track-up">
+                    {col3.map((src, i) => (
+                      <div key={i} className="marquee-card">
+                        <img
+                          src={src}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0.35';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="marquee-col c4">
+                  <div className="track-down">
+                    {col4.map((src, i) => (
+                      <div key={i} className="marquee-card">
+                        <img
+                          src={src}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0.35';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="marquee-col c5">
+                  <div className="track-up">
+                    {col5.map((src, i) => (
+                      <div key={i} className="marquee-card">
+                        <img
+                          src={src}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0.35';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="hero-scrim" />
+
+              <div className="hero-overlay">
+                <h1 className="hero-heading">Who Is?</h1>
+                <h1 className="hero-heading">Guess A Character</h1>
+              </div>
+            </section>
           </div>
-          <button type="button" className="btn-settings" aria-label="Настройки">
-            <span className="material-symbols-rounded">settings</span>
-          </button>
-        </header>
 
-        <section className="hero-box">
-          <div className="marquee-columns">
-            <div className="marquee-col c1">
-              <div className="track-up">
-                {col1.map((src, i) => (
-                  <div key={i} className="marquee-card">
-                    <img
-                      src={src}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.style.opacity = '0.35';
-                      }}
-                    />
-                  </div>
-                ))}
+          <section className="home-bottom">
+            <div className="play-stack">
+              <div className="peeker-card">
+                <div className="peeker-segments">
+                  <button
+                    type="button"
+                    className={`peeker-segment ${gameMode === 'ai' ? 'active' : ''}`}
+                    onClick={() => setGameMode('ai')}
+                  >
+                    <span className="material-symbols-rounded">smart_toy</span>
+                    <span>С ИИ</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`peeker-segment ${gameMode === 'online' ? 'active' : ''}`}
+                    onClick={() => setGameMode('online')}
+                  >
+                    <span className="material-symbols-rounded">groups</span>
+                    <span>Онлайн</span>
+                  </button>
+                </div>
               </div>
+
+              <button type="button" className="btn-pill primary">
+                <span
+                  key={gameMode}
+                  className={`btn-label-text ${
+                    gameMode === 'online' ? 'slide-from-right' : 'slide-from-left'
+                  }`}
+                >
+                  {gameMode === 'ai' ? 'Играть' : 'Создать комнату'}
+                </span>
+              </button>
             </div>
 
-            <div className="marquee-col c2">
-              <div className="track-down">
-                {col2.map((src, i) => (
-                  <div key={i} className="marquee-card">
-                    <img
-                      src={src}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.style.opacity = '0.35';
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <button type="button" className="btn-pill outline">
+              Присоединиться
+            </button>
 
-            <div className="marquee-col c3">
-              <div className="track-up">
-                {col3.map((src, i) => (
-                  <div key={i} className="marquee-card">
-                    <img
-                      src={src}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.style.opacity = '0.35';
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="marquee-col c4">
-              <div className="track-down">
-                {col4.map((src, i) => (
-                  <div key={i} className="marquee-card">
-                    <img
-                      src={src}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.style.opacity = '0.35';
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="marquee-col c5">
-              <div className="track-up">
-                {col5.map((src, i) => (
-                  <div key={i} className="marquee-card">
-                    <img
-                      src={src}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.style.opacity = '0.35';
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-scrim" />
-
-          <div className="hero-overlay">
-            <h1 className="hero-heading">Who Is?</h1>
-            <h1 className="hero-heading">Guess A Character</h1>
-          </div>
-        </section>
+            {isStandalone ? (
+              <span className="pibs-signature">Made by PIBS</span>
+            ) : (
+              <button
+                type="button"
+                className="pwa-chip"
+                onClick={() => setShowIosSheet(true)}
+              >
+                <span className="material-symbols-rounded">ios_share</span>
+                <span>На экран «Домой»</span>
+              </button>
+            )}
+          </section>
+        </main>
       </div>
 
-      <section className="home-bottom">
-        <div className="play-stack">
-          <div className="peeker-card">
-            <div className="peeker-segments">
-              <button
-                type="button"
-                className={`peeker-segment ${gameMode === 'ai' ? 'active' : ''}`}
-                onClick={() => setGameMode('ai')}
-              >
-                <span className="material-symbols-rounded">smart_toy</span>
-                <span>С ИИ</span>
-              </button>
-              <button
-                type="button"
-                className={`peeker-segment ${gameMode === 'online' ? 'active' : ''}`}
-                onClick={() => setGameMode('online')}
-              >
-                <span className="material-symbols-rounded">groups</span>
-                <span>Онлайн</span>
-              </button>
+      <div
+        className={`view-panel ${
+          currentScreen === 'settings' ? 'settings-active' : 'settings-hidden'
+        }`}
+      >
+        <section className="settings-view">
+          <div>
+            <header className="settings-header">
+              <h1>Настройки</h1>
+            </header>
+
+            <div className="settings-content">
+              <div className="settings-field-group">
+                <span className="settings-field-label">Никнейм</span>
+                <div className="settings-input-card">
+                  <input
+                    type="text"
+                    maxLength={22}
+                    value={tempNick}
+                    onChange={(e) => setTempNick(e.target.value)}
+                    placeholder="Ваш никнейм"
+                    className="settings-text-input"
+                  />
+                  <span className="settings-counter">
+                    {tempNick.length} / 22
+                  </span>
+                </div>
+                <span className="settings-field-desc">
+                  Ваш никнейм будет виден другим игрокам во время игры по сети
+                </span>
+              </div>
+
+              <div className="settings-field-group">
+                <span className="settings-field-label">Аватар</span>
+                <div
+                  className="avatar-setting-card"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {tempAvatar ? (
+                    <div className="avatar-filled-box">
+                      <img src={tempAvatar} alt="" />
+                    </div>
+                  ) : (
+                    <div className="avatar-dashed-box">
+                      <span className="material-symbols-rounded">add</span>
+                    </div>
+                  )}
+
+                  <div className="avatar-setting-text">
+                    <span className="avatar-setting-title">
+                      {tempAvatar ? 'Изменить изображение' : 'Выбрать аватар'}
+                    </span>
+                    <span className="avatar-setting-sub">
+                      Нажмите, чтобы загрузить персональное фото профиля
+                    </span>
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleAvatarSelect}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <button type="button" className="btn-pill primary">
-            <span
-              key={gameMode}
-              className={`btn-label-text ${
-                gameMode === 'online' ? 'slide-from-right' : 'slide-from-left'
-              }`}
-            >
-              {gameMode === 'ai' ? 'Играть' : 'Создать комнату'}
-            </span>
-          </button>
-        </div>
-
-        <button type="button" className="btn-pill outline">
-          Присоединиться
-        </button>
-
-        {isStandalone ? (
-          <span className="pibs-signature">Made by PIBS</span>
-        ) : (
-          <button
-            type="button"
-            className="pwa-chip"
-            onClick={() => setShowIosSheet(true)}
-          >
-            <span className="material-symbols-rounded">ios_share</span>
-            <span>На экран «Домой»</span>
-          </button>
-        )}
-      </section>
+          <footer className="settings-footer">
+            {hasSettingsChanges ? (
+              <button
+                type="button"
+                className="btn-pill primary"
+                onClick={saveSettings}
+              >
+                Сохранить
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-pill outline"
+                onClick={closeSettings}
+              >
+                Назад
+              </button>
+            )}
+          </footer>
+        </section>
+      </div>
 
       {showIosSheet && (
         <div className="sheet-backdrop" onClick={() => setShowIosSheet(false)}>
@@ -278,6 +437,6 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 };
