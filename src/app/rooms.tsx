@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+export interface RoomParticipant {
+  nickname: string;
+  avatar: string | null;
+  ready?: boolean;
+  picked?: string;
+  isHost?: boolean;
+}
+
 export interface RoomItem {
   id: string;
   title: string;
@@ -8,6 +16,7 @@ export interface RoomItem {
   host_avatar: string | null;
   guest_nickname: string | null;
   guest_avatar: string | null;
+  players?: RoomParticipant[];
   theme_type: string;
   selected_universes: string[];
   game_rule: string;
@@ -71,10 +80,10 @@ export const RoomsList: React.FC<RoomsListProps> = ({
           fetchRooms();
           if (payload.eventType === 'UPDATE' && payload.new) {
             const updated = payload.new as RoomItem;
-            if (
-              updated.status === 'picking' &&
-              (updated.host_nickname === nickname || updated.guest_nickname === nickname)
-            ) {
+            const plist = getRoomPlayers(updated);
+            const isUserInRoom = plist.some((p) => p.nickname === nickname);
+
+            if (updated.status === 'picking' && isUserInRoom) {
               onStartMatch(updated);
             }
           }
@@ -87,6 +96,19 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     };
   }, [nickname, onStartMatch]);
 
+  const getRoomPlayers = (room: RoomItem): RoomParticipant[] => {
+    if (Array.isArray(room.players) && room.players.length > 0) {
+      return room.players;
+    }
+    const list: RoomParticipant[] = [
+      { nickname: room.host_nickname, avatar: room.host_avatar, isHost: true }
+    ];
+    if (room.guest_nickname) {
+      list.push({ nickname: room.guest_nickname, avatar: room.guest_avatar, isHost: false });
+    }
+    return list;
+  };
+
   const hasMyRoom = rooms.some((r) => r.host_nickname === nickname);
 
   const handleCardClick = async (room: RoomItem) => {
@@ -97,11 +119,21 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     const client = supabase;
     if (!client) return;
 
+    const currentPlayers = getRoomPlayers(room);
+    if (currentPlayers.length >= 4) return;
+    if (currentPlayers.some((p) => p.nickname === nickname)) return;
+
+    const updatedPlayers = [
+      ...currentPlayers,
+      { nickname, avatar, isHost: false }
+    ];
+
     setActiveRoomId(room.id);
 
     await client
       .from('rooms')
       .update({
+        players: updatedPlayers,
         guest_nickname: nickname,
         guest_avatar: avatar
       })
@@ -120,11 +152,15 @@ export const RoomsList: React.FC<RoomsListProps> = ({
       onRoomDeleted();
       fetchRooms();
     } else {
+      const currentPlayers = getRoomPlayers(room);
+      const remainingPlayers = currentPlayers.filter((p) => p.nickname !== nickname);
+
       await client
         .from('rooms')
         .update({
-          guest_nickname: null,
-          guest_avatar: null
+          players: remainingPlayers,
+          guest_nickname: remainingPlayers[1]?.nickname || null,
+          guest_avatar: remainingPlayers[1]?.avatar || null
         })
         .eq('id', room.id);
       setActiveRoomId(null);
@@ -136,6 +172,9 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     e.stopPropagation();
     const client = supabase;
     if (!client) return;
+
+    const currentPlayers = getRoomPlayers(room);
+    if (currentPlayers.length < 2) return;
 
     await client
       .from('rooms')
@@ -211,9 +250,10 @@ export const RoomsList: React.FC<RoomsListProps> = ({
             ) : (
               filteredRooms.map((room) => {
                 const isOwn = room.host_nickname === nickname;
-                const isGuestJoined =
-                  room.guest_nickname === nickname || activeRoomId === room.id;
-                const isExpanded = isOwn || isGuestJoined;
+                const playersList = getRoomPlayers(room);
+                const isUserJoined = playersList.some((p) => p.nickname === nickname);
+                const isExpanded = isOwn || isUserJoined || activeRoomId === room.id;
+                const canStart = playersList.length >= 2;
 
                 return (
                   <div
@@ -238,10 +278,12 @@ export const RoomsList: React.FC<RoomsListProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {isOwn ? (
                           <span className="room-status-badge own-badge">Вы</span>
-                        ) : isGuestJoined ? (
+                        ) : isUserJoined ? (
                           <span className="room-status-badge">В комнате</span>
                         ) : (
-                          <span className="room-status-badge">Ждет</span>
+                          <span className="room-status-badge">
+                            {playersList.length}/4
+                          </span>
                         )}
 
                         {isExpanded && (
@@ -267,48 +309,40 @@ export const RoomsList: React.FC<RoomsListProps> = ({
                     {isExpanded && (
                       <div className="room-expanded-body">
                         <div className="room-players-row">
-                          <div className="player-slot">
-                            <div className="player-slot-avatar">
-                              {room.host_avatar ? (
-                                <img src={room.host_avatar} alt="" />
-                              ) : (
-                                <span className="material-symbols-rounded">person</span>
-                              )}
-                            </div>
-                            <span className="player-slot-name">
-                              {room.host_nickname}
-                            </span>
-                          </div>
-
-                          <div className="player-slot">
-                            {room.guest_nickname ? (
-                              <div className="player-slot-avatar">
-                                {room.guest_avatar ? (
-                                  <img src={room.guest_avatar} alt="" />
+                          {[0, 1, 2, 3].map((slotIdx) => {
+                            const p = playersList[slotIdx];
+                            return (
+                              <div key={slotIdx} className="player-slot">
+                                {p ? (
+                                  <div className="player-slot-avatar">
+                                    {p.avatar ? (
+                                      <img src={p.avatar} alt="" />
+                                    ) : (
+                                      <span className="material-symbols-rounded">person</span>
+                                    )}
+                                  </div>
                                 ) : (
-                                  <span className="material-symbols-rounded">person</span>
+                                  <div className="player-slot-avatar empty">
+                                    <span className="material-symbols-rounded">add</span>
+                                  </div>
                                 )}
+                                <span className="player-slot-name">
+                                  {p ? p.nickname : `Игрок ${slotIdx + 1}`}
+                                </span>
                               </div>
-                            ) : (
-                              <div className="player-slot-avatar empty">
-                                <span className="material-symbols-rounded">add</span>
-                              </div>
-                            )}
-                            <span className="player-slot-name">
-                              {room.guest_nickname || 'Игрок 2'}
-                            </span>
-                          </div>
+                            );
+                          })}
                         </div>
 
                         <div className="room-control-side">
                           {isOwn ? (
                             <button
                               type="button"
-                              className="btn-start-circle"
+                              className={`btn-start-circle ${!canStart ? 'disabled' : ''}`}
                               aria-label="Начать игру"
                               onClick={(e) => handleLaunchGame(e, room)}
                             >
-                              <span className="material-symbols-rounded">play_arrow</span>
+                              <span className="material-symbols-rounded">arrow_forward</span>
                             </button>
                           ) : (
                             <div className="waiting-circular-box">
