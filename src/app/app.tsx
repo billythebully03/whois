@@ -113,8 +113,17 @@ export const App: React.FC = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rooms' },
-        () => {
+        (payload) => {
           checkUserExistingRoom();
+          if (
+            payload.eventType === 'UPDATE' &&
+            payload.new &&
+            (payload.new as { status?: string }).status === 'cancelled' &&
+            activeGameRoom?.id === (payload.new as { id?: string }).id
+          ) {
+            setIsPickOpen(false);
+            setActiveGameRoom(null);
+          }
         }
       )
       .subscribe();
@@ -122,7 +131,7 @@ export const App: React.FC = () => {
     return () => {
       client.removeChannel(channel);
     };
-  }, [checkUserExistingRoom]);
+  }, [checkUserExistingRoom, activeGameRoom]);
 
   const handleSaveSettings = (newNick: string, newAvatar: string | null) => {
     setNickname(newNick);
@@ -403,7 +412,11 @@ export const App: React.FC = () => {
         isOpen={isPickOpen}
         room={activeGameRoom}
         nickname={nickname}
-        onExit={() => setIsPickOpen(false)}
+        onExit={() => {
+          setIsPickOpen(false);
+          setActiveGameRoom(null);
+          checkUserExistingRoom();
+        }}
       />
 
       {showAiNotice && (
