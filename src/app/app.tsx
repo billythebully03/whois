@@ -204,7 +204,14 @@ export const App: React.FC = () => {
           </div>
 
           <button type="button" className="btn-pill primary">
-            Играть
+            <span
+              key={gameMode}
+              className={`btn-label-text ${
+                gameMode === 'online' ? 'slide-from-right' : 'slide-from-left'
+              }`}
+            >
+              {gameMode === 'ai' ? 'Играть' : 'Создать комнату'}
+            </span>
           </button>
         </div>
 
