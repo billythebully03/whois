@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Settings } from './settings';
 import { CreateRoom } from './create';
+import { RoomsList, RoomItem } from './rooms';
+import { supabase } from '../lib/supabase';
 
 const globImages = import.meta.glob<string>(
   '/public/pics/**/*.{png,jpg,jpeg,webp,PNG,JPG,JPEG,WEBP}',
@@ -39,10 +41,12 @@ const shuffleList = (arr: string[]) => {
 export const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+  const [isRoomsListOpen, setIsRoomsListOpen] = useState(false);
   const [showAiNotice, setShowAiNotice] = useState(false);
   const [showIosSheet, setShowIosSheet] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [gameMode, setGameMode] = useState<'ai' | 'online'>('ai');
+  const [hasExistingRoom, setHasExistingRoom] = useState(false);
 
   const [nickname, setNickname] = useState<string>(() => {
     return localStorage.getItem('wtc_nickname') || 'Игрок';
@@ -52,21 +56,29 @@ export const App: React.FC = () => {
     return localStorage.getItem('wtc_avatar') || null;
   });
 
-  const [questionCheck, setQuestionCheck] = useState<boolean>(() => {
-    return localStorage.getItem('wtc_question_check') !== 'false';
-  });
-
   useEffect(() => {
     const isIos = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     const isMediaStandalone = window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(Boolean(isIos || isMediaStandalone));
   }, []);
 
-  const handleSaveSettings = (
-    newNick: string,
-    newAvatar: string | null,
-    newCheck: boolean
-  ) => {
+  const checkUserExistingRoom = async () => {
+    if (!supabase) return;
+    const { data } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('host_nickname', nickname)
+      .eq('status', 'waiting')
+      .limit(1);
+
+    setHasExistingRoom(Boolean(data && data.length > 0));
+  };
+
+  useEffect(() => {
+    checkUserExistingRoom();
+  }, [nickname]);
+
+  const handleSaveSettings = (newNick: string, newAvatar: string | null) => {
     setNickname(newNick);
     localStorage.setItem('wtc_nickname', newNick);
 
@@ -77,9 +89,6 @@ export const App: React.FC = () => {
       localStorage.removeItem('wtc_avatar');
     }
 
-    setQuestionCheck(newCheck);
-    localStorage.setItem('wtc_question_check', String(newCheck));
-
     setIsSettingsOpen(false);
   };
 
@@ -87,12 +96,24 @@ export const App: React.FC = () => {
     if (gameMode === 'ai') {
       setShowAiNotice(true);
     } else {
-      setIsCreateRoomOpen(true);
+      if (hasExistingRoom) {
+        setIsRoomsListOpen(true);
+      } else {
+        setIsCreateRoomOpen(true);
+      }
     }
   };
 
   const handleRoomCreated = () => {
     setIsCreateRoomOpen(false);
+    checkUserExistingRoom();
+    setIsRoomsListOpen(true);
+  };
+
+  const handleSelectRoom = (room: RoomItem) => {
+    if (room.host_nickname === nickname) {
+      return;
+    }
   };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
@@ -275,7 +296,11 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          <button type="button" className="btn-pill outline">
+          <button
+            type="button"
+            className="btn-pill outline"
+            onClick={() => setIsRoomsListOpen(true)}
+          >
             Присоединиться
           </button>
 
@@ -298,7 +323,6 @@ export const App: React.FC = () => {
         isOpen={isSettingsOpen}
         nickname={nickname}
         avatar={avatar}
-        questionCheck={questionCheck}
         onSave={handleSaveSettings}
         onClose={() => setIsSettingsOpen(false)}
       />
@@ -306,8 +330,21 @@ export const App: React.FC = () => {
       <CreateRoom
         isOpen={isCreateRoomOpen}
         nickname={nickname}
+        avatar={avatar}
+        hasExistingRoom={hasExistingRoom}
         onClose={() => setIsCreateRoomOpen(false)}
-        onCreate={handleRoomCreated}
+        onCreated={handleRoomCreated}
+      />
+
+      <RoomsList
+        isOpen={isRoomsListOpen}
+        nickname={nickname}
+        onClose={() => setIsRoomsListOpen(false)}
+        onOpenCreate={() => {
+          setIsRoomsListOpen(false);
+          setIsCreateRoomOpen(true);
+        }}
+        onSelectRoom={handleSelectRoom}
       />
 
       {showAiNotice && (
