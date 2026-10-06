@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Settings } from './settings';
 import { CreateRoom } from './create';
-import { RoomsList } from './rooms';
+import { RoomsList, RoomItem } from './rooms';
+import { PickScreen } from './pick';
 import { supabase } from '../lib/supabase';
 
 const globImages = import.meta.glob<string>(
@@ -42,6 +43,9 @@ export const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
   const [isRoomsListOpen, setIsRoomsListOpen] = useState(false);
+  const [isPickOpen, setIsPickOpen] = useState(false);
+  const [activeGameRoom, setActiveGameRoom] = useState<RoomItem | null>(null);
+
   const [showAiNotice, setShowAiNotice] = useState(false);
   const [showIosSheet, setShowIosSheet] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -83,7 +87,7 @@ export const App: React.FC = () => {
     syncUserToDatabase(nickname, avatar);
   }, []);
 
-  const checkUserExistingRoom = async () => {
+  const checkUserExistingRoom = useCallback(async () => {
     const client = supabase;
     if (!client) return;
     const { data } = await client
@@ -94,11 +98,31 @@ export const App: React.FC = () => {
       .limit(1);
 
     setHasExistingRoom(Boolean(data && data.length > 0));
-  };
+  }, [nickname]);
 
   useEffect(() => {
     checkUserExistingRoom();
-  }, [nickname]);
+  }, [checkUserExistingRoom]);
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+
+    const channel = client
+      .channel('app_room_watcher')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rooms' },
+        () => {
+          checkUserExistingRoom();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [checkUserExistingRoom]);
 
   const handleSaveSettings = (newNick: string, newAvatar: string | null) => {
     setNickname(newNick);
@@ -131,6 +155,12 @@ export const App: React.FC = () => {
     setIsCreateRoomOpen(false);
     checkUserExistingRoom();
     setIsRoomsListOpen(true);
+  };
+
+  const handleStartMatch = (room: RoomItem) => {
+    setActiveGameRoom(room);
+    setIsRoomsListOpen(false);
+    setIsPickOpen(true);
   };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
@@ -362,6 +392,18 @@ export const App: React.FC = () => {
           setIsRoomsListOpen(false);
           setIsCreateRoomOpen(true);
         }}
+        onRoomDeleted={() => {
+          setHasExistingRoom(false);
+          checkUserExistingRoom();
+        }}
+        onStartMatch={handleStartMatch}
+      />
+
+      <PickScreen
+        isOpen={isPickOpen}
+        room={activeGameRoom}
+        nickname={nickname}
+        onExit={() => setIsPickOpen(false)}
       />
 
       {showAiNotice && (
