@@ -8,8 +8,13 @@ export const App: React.FC = () => {
         height: '100%',
         backgroundColor: 'var(--bg)',
         display: 'flex',
-        flexDirection: 'column'
+        alignItems: 'center',
+        justifyContent: 'center'
       }}
-    />
+    >
+      <div className="splash-badge">
+        <span className="splash-text">PIBS</span>
+      </div>
+    </main>
   );
 };
