@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface CreateRoomProps {
   isOpen: boolean;
   nickname: string;
+  avatar: string | null;
   onClose: () => void;
-  onCreate: (config: {
-    roomTitle: string;
-    themeType: 'all' | 'single' | 'double';
-    selectedUniverses: string[];
-    gameRule: 'classic' | 'double_trouble';
-  }) => void;
+  onCreated: (roomId: string) => void;
+  hasExistingRoom: boolean;
 }
 
 const universeOptions = [
@@ -22,8 +20,10 @@ const universeOptions = [
 export const CreateRoom: React.FC<CreateRoomProps> = ({
   isOpen,
   nickname,
+  avatar,
   onClose,
-  onCreate
+  onCreated,
+  hasExistingRoom
 }) => {
   const truncatedNick =
     nickname.length > 8 ? `${nickname.slice(0, 8)}...` : nickname;
@@ -36,11 +36,14 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
   const [singleUniverse, setSingleUniverse] = useState('marvel');
   const [doubleUniverses, setDoubleUniverses] = useState(['marvel', 'the_boys']);
   const [gameRule, setGameRule] = useState<'classic' | 'double_trouble'>('classic');
+  const [questionCheck, setQuestionCheck] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setRoomTitle(`Комната ${truncatedNick}`);
       setIsEditingTitle(false);
+      setIsSubmitting(false);
     }
   }, [isOpen, truncatedNick]);
 
@@ -64,7 +67,9 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
     }
   };
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async () => {
+    if (isSubmitting || hasExistingRoom) return;
+
     let chosen: string[] = [];
     if (themeTab === 'all') {
       chosen = ['all'];
@@ -74,12 +79,27 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
       chosen = doubleUniverses;
     }
 
-    onCreate({
-      roomTitle: roomTitle.trim() || `Комната ${truncatedNick}`,
-      themeType: themeTab,
-      selectedUniverses: chosen,
-      gameRule
-    });
+    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const finalTitle = roomTitle.trim() || `Комната ${truncatedNick}`;
+
+    setIsSubmitting(true);
+
+    if (supabase) {
+      await supabase.from('rooms').insert({
+        id: roomId,
+        title: finalTitle,
+        host_nickname: nickname,
+        host_avatar: avatar,
+        theme_type: themeTab,
+        selected_universes: chosen,
+        game_rule: gameRule,
+        question_check: questionCheck,
+        status: 'waiting'
+      });
+    }
+
+    setIsSubmitting(false);
+    onCreated(roomId);
   };
 
   return (
@@ -224,17 +244,41 @@ export const CreateRoom: React.FC<CreateRoomProps> = ({
                 </button>
               </div>
             </div>
+
+            <div
+              className="flat-toggle-row"
+              onClick={() => setQuestionCheck((prev) => !prev)}
+            >
+              <div className={`flat-toggle-text ${!questionCheck ? 'dimmed' : ''}`}>
+                <span className="flat-toggle-title">Проверка вопроса</span>
+                <span className="flat-toggle-desc">
+                  ИИ проверяет, не нарушает ли вопрос правила игры
+                </span>
+              </div>
+
+              <div className={`circle-switch ${questionCheck ? 'on' : ''}`}>
+                <div className="circle-switch-dot" />
+              </div>
+            </div>
           </div>
         </div>
 
         <footer className="room-footer">
-          <button
-            type="button"
-            className="btn-pill primary"
-            onClick={handleCreateRoom}
-          >
-            Создать комнату
-          </button>
+          {hasExistingRoom ? (
+            <div className="room-desc-box" style={{ textAlign: 'center', color: '#f28b82' }}>
+              У вас уже есть созданная комната. Нельзя создать больше одной.
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn-pill primary"
+              disabled={isSubmitting}
+              onClick={handleCreateRoom}
+            >
+              {isSubmitting ? 'Создание...' : 'Создать комнату'}
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-pill outline"
