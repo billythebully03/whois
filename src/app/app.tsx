@@ -3,6 +3,7 @@ import { Settings } from './settings';
 import { CreateRoom } from './create';
 import { RoomsList, RoomItem } from './rooms';
 import { PickScreen } from './pick';
+import { RouletteScreen } from './roulette';
 import { supabase } from '../lib/supabase';
 
 const globImages = import.meta.glob<string>(
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
   const [isRoomsListOpen, setIsRoomsListOpen] = useState(false);
   const [isPickOpen, setIsPickOpen] = useState(false);
+  const [isRouletteOpen, setIsRouletteOpen] = useState(false);
   const [activeGameRoom, setActiveGameRoom] = useState<RoomItem | null>(null);
   const [isScreenDimmed, setIsScreenDimmed] = useState(false);
 
@@ -123,6 +125,7 @@ export const App: React.FC = () => {
             activeGameRoom?.id === (payload.new as { id?: string }).id
           ) {
             setIsPickOpen(false);
+            setIsRouletteOpen(false);
             setActiveGameRoom(null);
           }
         }
@@ -168,6 +171,8 @@ export const App: React.FC = () => {
   };
 
   const handleStartMatch = (room: RoomItem) => {
+    if (isPickOpen || isRouletteOpen) return;
+
     setIsScreenDimmed(true);
     setTimeout(() => {
       setActiveGameRoom(room);
@@ -175,8 +180,13 @@ export const App: React.FC = () => {
       setIsPickOpen(true);
       setTimeout(() => {
         setIsScreenDimmed(false);
-      }, 80);
-    }, 380);
+      }, 60);
+    }, 350);
+  };
+
+  const handleAllReadyTransition = () => {
+    setIsPickOpen(false);
+    setIsRouletteOpen(true);
   };
 
   const [col1, col2, col3, col4, col5] = useMemo(() => {
@@ -426,6 +436,13 @@ export const App: React.FC = () => {
           setActiveGameRoom(null);
           checkUserExistingRoom();
         }}
+        onAllReady={handleAllReadyTransition}
+      />
+
+      <RouletteScreen
+        isOpen={isRouletteOpen}
+        room={activeGameRoom}
+        nickname={nickname}
       />
 
       {showAiNotice && (
