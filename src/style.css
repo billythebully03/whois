@@ -50,6 +50,21 @@ html, body {
   overflow: hidden;
 }
 
+.global-screen-dim {
+  position: fixed;
+  inset: 0;
+  background-color: #000000;
+  z-index: 99;
+  pointer-events: none;
+  transition: opacity 0.38s ease;
+  opacity: 0;
+}
+
+.global-screen-dim.dimmed {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .home-view {
   width: 100%;
   height: 100%;
@@ -429,15 +444,6 @@ html, body {
 .rooms-overlay.is-open,
 .pick-overlay.is-open {
   transform: translateX(0);
-}
-
-.pick-fade-backdrop {
-  position: absolute;
-  inset: 0;
-  background: #000000;
-  z-index: 30;
-  transition: opacity 0.5s ease;
-  pointer-events: none;
 }
 
 .settings-view,
@@ -1102,7 +1108,7 @@ html, body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 2px solid #333333;
+  border: 2.5px solid #333333;
   border-top-color: #ffffff;
   animation: spinCircle 0.8s linear infinite;
 }
