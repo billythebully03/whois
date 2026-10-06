@@ -7,6 +7,7 @@ export interface RoomItem {
   host_nickname: string;
   host_avatar: string | null;
   guest_nickname: string | null;
+  guest_avatar: string | null;
   theme_type: string;
   selected_universes: string[];
   game_rule: string;
@@ -17,20 +18,21 @@ export interface RoomItem {
 interface RoomsListProps {
   isOpen: boolean;
   nickname: string;
+  avatar: string | null;
   onClose: () => void;
   onOpenCreate: () => void;
-  onSelectRoom: (room: RoomItem) => void;
 }
 
 export const RoomsList: React.FC<RoomsListProps> = ({
   isOpen,
   nickname,
+  avatar,
   onClose,
-  onOpenCreate,
-  onSelectRoom
+  onOpenCreate
 }) => {
   const [rooms, setRooms] = useState<RoomItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
   const fetchRooms = async () => {
     const client = supabase;
@@ -73,6 +75,51 @@ export const RoomsList: React.FC<RoomsListProps> = ({
   }, []);
 
   const hasMyRoom = rooms.some((r) => r.host_nickname === nickname);
+
+  const handleCardClick = async (room: RoomItem) => {
+    const isOwn = room.host_nickname === nickname;
+    if (isOwn) {
+      return;
+    }
+
+    if (activeRoomId === room.id) {
+      return;
+    }
+
+    const client = supabase;
+    if (!client) return;
+
+    setActiveRoomId(room.id);
+
+    await client
+      .from('rooms')
+      .update({
+        guest_nickname: nickname,
+        guest_avatar: avatar
+      })
+      .eq('id', room.id);
+  };
+
+  const handleLeaveRoom = async (e: React.MouseEvent, room: RoomItem) => {
+    e.stopPropagation();
+    const client = supabase;
+    if (!client) return;
+
+    const isOwn = room.host_nickname === nickname;
+    if (isOwn) {
+      await client.from('rooms').delete().eq('id', room.id);
+      setActiveRoomId(null);
+    } else {
+      await client
+        .from('rooms')
+        .update({
+          guest_nickname: null,
+          guest_avatar: null
+        })
+        .eq('id', room.id);
+      setActiveRoomId(null);
+    }
+  };
 
   const filteredRooms = rooms
     .filter((r) => {
@@ -140,12 +187,17 @@ export const RoomsList: React.FC<RoomsListProps> = ({
             ) : (
               filteredRooms.map((room) => {
                 const isOwn = room.host_nickname === nickname;
+                const isGuestJoined =
+                  room.guest_nickname === nickname || activeRoomId === room.id;
+                const isExpanded = isOwn || isGuestJoined;
+
                 return (
-                  <button
+                  <div
                     key={room.id}
-                    type="button"
-                    className={`room-outline-card ${isOwn ? 'own' : ''}`}
-                    onClick={() => onSelectRoom(room)}
+                    className={`room-outline-card ${isOwn ? 'own' : ''} ${
+                      isExpanded ? 'expanded' : ''
+                    }`}
+                    onClick={() => handleCardClick(room)}
                   >
                     <div className="room-card-top">
                       <div className="room-host-row">
@@ -159,11 +211,25 @@ export const RoomsList: React.FC<RoomsListProps> = ({
                         <span className="room-card-title">{room.title}</span>
                       </div>
 
-                      {isOwn ? (
-                        <span className="room-status-badge own-badge">Вы</span>
-                      ) : (
-                        <span className="room-status-badge">Ждет</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {isOwn ? (
+                          <span className="room-status-badge own-badge">Вы</span>
+                        ) : isGuestJoined ? (
+                          <span className="room-status-badge">В комнате</span>
+                        ) : (
+                          <span className="room-status-badge">Ждет</span>
+                        )}
+
+                        {isExpanded && (
+                          <button
+                            type="button"
+                            className="btn-leave-icon"
+                            onClick={(e) => handleLeaveRoom(e, room)}
+                          >
+                            <span className="material-symbols-rounded">close</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="room-card-tags">
@@ -173,7 +239,64 @@ export const RoomsList: React.FC<RoomsListProps> = ({
                         <span className="room-tag">Проверка ИИ</span>
                       )}
                     </div>
-                  </button>
+
+                    {isExpanded && (
+                      <div className="room-expanded-body">
+                        <div className="room-players-row">
+                          <div className="player-slot">
+                            <div className="player-slot-avatar">
+                              {room.host_avatar ? (
+                                <img src={room.host_avatar} alt="" />
+                              ) : (
+                                <span className="material-symbols-rounded">person</span>
+                              )}
+                            </div>
+                            <span className="player-slot-name">
+                              {room.host_nickname}
+                            </span>
+                          </div>
+
+                          <div className="player-slot">
+                            {room.guest_nickname ? (
+                              <div className="player-slot-avatar">
+                                {room.guest_avatar ? (
+                                  <img src={room.guest_avatar} alt="" />
+                                ) : (
+                                  <span className="material-symbols-rounded">person</span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="player-slot-avatar empty">
+                                <span className="material-symbols-rounded">add</span>
+                              </div>
+                            )}
+                            <span className="player-slot-name">
+                              {room.guest_nickname || 'Игрок 2'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="room-control-side">
+                          {isOwn ? (
+                            <button
+                              type="button"
+                              className="btn-start-circle"
+                              aria-label="Начать игру"
+                            >
+                              <span className="material-symbols-rounded">play_arrow</span>
+                            </button>
+                          ) : (
+                            <div className="waiting-progress-box">
+                              <div className="waiting-progress-track">
+                                <div className="waiting-progress-bar" />
+                              </div>
+                              <span className="waiting-progress-text">Ожидание...</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })
             )}
